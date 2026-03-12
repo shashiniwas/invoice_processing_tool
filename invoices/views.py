@@ -33,6 +33,7 @@ class InvoiceIngestionView(View):
         invoice = Invoice.objects.create(
             source_name=form.cleaned_data['source_name'],
             file=form.cleaned_data['file'],
+            uploaded_by=request.user if request.user.is_authenticated else None,
         )
 
         processor = AIInvoiceProcessor()

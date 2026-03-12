@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -9,6 +10,7 @@ class Invoice(models.Model):
         FAILED = 'failed', 'Failed'
 
     source_name = models.CharField(max_length=255)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     file = models.FileField(upload_to='invoices/')
     vendor_name = models.CharField(max_length=255, blank=True)
     invoice_number = models.CharField(max_length=120, blank=True)
