@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Invoice {{ invoice.id }} | Invoice AI{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Invoice #{{ invoice.id }}</h3>
+  <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5>Extracted Fields</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item"><strong>Source:</strong> {{ invoice.source_name }}</li>
+          <li class="list-group-item"><strong>Status:</strong> {{ invoice.status }}</li>
+          <li class="list-group-item"><strong>Vendor:</strong> {{ invoice.vendor_name|default:'—' }}</li>
+          <li class="list-group-item"><strong>Invoice Number:</strong> {{ invoice.invoice_number|default:'—' }}</li>
+          <li class="list-group-item"><strong>Invoice Date:</strong> {{ invoice.invoice_date|default:'—' }}</li>
+          <li class="list-group-item"><strong>Due Date:</strong> {{ invoice.due_date|default:'—' }}</li>
+          <li class="list-group-item"><strong>Currency:</strong> {{ invoice.currency|default:'—' }}</li>
+          <li class="list-group-item"><strong>Total:</strong> {{ invoice.total_amount|default:'—' }}</li>
+          <li class="list-group-item"><strong>Tax:</strong> {{ invoice.tax_amount|default:'—' }}</li>
+          <li class="list-group-item"><strong>Type:</strong> {{ invoice.invoice_type|default:'—' }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5>Invoice File</h5>
+        {% if invoice.file %}
+          <p><a href="{{ invoice.file.url }}" target="_blank" class="btn btn-sm btn-primary">Open / Download Invoice</a></p>
+          {% if invoice.file.url|lower|slice:'-4:' == '.pdf' %}
+            <iframe src="{{ invoice.file.url }}" width="100%" height="450"></iframe>
+          {% endif %}
+        {% else %}
+          <p class="text-muted">No file uploaded.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h5>Extraction Diagnostics</h5>
+        {% if invoice.extracted_data.warnings %}
+          <div class="alert alert-warning">{{ invoice.extracted_data.warnings|join:', ' }}</div>
+        {% endif %}
+        <p class="mb-1"><strong>Text preview used for extraction:</strong></p>
+        <pre class="bg-light p-2">{{ invoice.extracted_data.text_preview|default:'(empty)' }}</pre>
+      </div>
+    </div>
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h5>JSON Data</h5>
+        <pre class="bg-light p-2">{{ invoice.extracted_data|pprint }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

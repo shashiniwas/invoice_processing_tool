@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard | Invoice AI{% endblock %}
+{% block content %}
+<h2 class="mb-3">User Dashboard</h2>
+<div class="row g-3 mb-4">
+  <div class="col-md-4"><div class="card"><div class="card-body"><strong>Total Users:</strong> {{ total_users }}</div></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-body"><strong>Total Invoices:</strong> {{ total_invoices }}</div></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-body"><strong>Processed:</strong> {{ processed_invoices|length }}</div></div></div>
+</div>
+
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <h4>Upload Invoice</h4>
+    <p class="text-muted">Upload from this form to process via AI + ERP sync.</p>
+    <form method="post" enctype="multipart/form-data" class="row g-2">
+      {% csrf_token %}
+      <div class="col-md-4">{{ upload_form.source_name.label_tag }}{{ upload_form.source_name }}</div>
+      <div class="col-md-6">{{ upload_form.file.label_tag }}{{ upload_form.file }}</div>
+      <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100" type="submit">Upload</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+  <button class="btn btn-outline-primary table-switch active" data-target="pending-table">Pending ({{ pending_invoices|length }})</button>
+  <button class="btn btn-outline-success table-switch" data-target="processed-table">Processed ({{ processed_invoices|length }})</button>
+  <button class="btn btn-outline-danger table-switch" data-target="failed-table">Failed ({{ failed_invoices|length }})</button>
+</div>
+
+<div id="pending-table" class="invoice-table-panel">
+  <h4>Pending Invoices</h4>
+  {% include 'partials/invoice_table.html' with invoices=pending_invoices %}
+</div>
+
+<div id="processed-table" class="invoice-table-panel d-none">
+  <h4>Processed Invoices</h4>
+  {% include 'partials/invoice_table.html' with invoices=processed_invoices %}
+</div>
+
+<div id="failed-table" class="invoice-table-panel d-none">
+  <h4>Failed Invoices</h4>
+  {% include 'partials/invoice_table.html' with invoices=failed_invoices %}
+</div>
+
+<script>
+  document.querySelectorAll('.table-switch').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = button.dataset.target;
+      document.querySelectorAll('.invoice-table-panel').forEach((panel) => panel.classList.add('d-none'));
+      document.getElementById(target).classList.remove('d-none');
+
+      document.querySelectorAll('.table-switch').forEach((btn) => btn.classList.remove('active'));
+      button.classList.add('active');
+    });
+  });
+</script>
+{% endblock %}
