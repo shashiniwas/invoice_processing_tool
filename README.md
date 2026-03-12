@@ -16,6 +16,10 @@ A Django service that ingests invoices of different layouts, extracts structured
 - Email notification on success/failure.
 - User registration/login/logout/profile APIs.
 - Admin UI for monitoring processed invoices.
+- Multi-level approval workflows (admin-created) with initiator/approver queues.
+- Workflow-level field and table visibility controls.
+- Rejection with mandatory remarks and bounce-back to previous approval level.
+- Notification bell feed for pending approvals and rejected returns.
 
 ## Quick start
 ```bash
@@ -80,3 +84,19 @@ Set environment variables:
 - `ERP_ENDPOINT`: ERP URL used when `ERP_PROVIDER=http`.
 - `NOTIFICATION_EMAIL`: recipient for processing notifications.
 - `EMAIL_BACKEND`: defaults to console backend.
+
+
+## Approval workflow
+- Only admin users can create workflows at `/dashboard/workflows/create/`.
+- Workflow includes multiple approver levels (comma-separated usernames in order).
+- Admin users should not be part of approval chain; only normal users are accepted as approvers.
+- Initiator queues:
+  - Pending
+  - Sent for Approval
+  - Rejected
+- Approver queues:
+  - Pending Approval
+  - Approved
+  - Rejected
+- Rejection requires remarks and sends invoice back to previous level.
+- Final approval triggers ERP sync.

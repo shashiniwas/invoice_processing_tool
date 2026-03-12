@@ -2,7 +2,7 @@
 {% block title %}Invoice {{ invoice.id }} | Invoice AI{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3>Invoice #{{ invoice.id }}</h3>
+  <h3>Invoice #{{ invoice.id }} <span class="badge bg-secondary">{{ invoice.approval_state }}</span></h3>
   <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
 </div>
 
@@ -20,15 +20,12 @@
           <div class="border rounded bg-light p-2" style="overflow:auto; max-height: 78vh;">
             <canvas id="pdf-canvas" style="width:100%; height:auto;"></canvas>
           </div>
-          <p class="mt-2 mb-0">
-            <a href="{{ invoice.file.url }}" target="_blank" class="btn btn-sm btn-primary">Open / Download Invoice</a>
-          </p>
         {% elif invoice.file %}
           <p class="text-muted mb-2">Preview is optimized for PDF files. Use download for this file type.</p>
-          <a href="{{ invoice.file.url }}" target="_blank" class="btn btn-sm btn-primary">Open / Download Invoice</a>
         {% else %}
           <p class="text-muted">No file uploaded.</p>
         {% endif %}
+        {% if invoice.file %}<a href="{{ invoice.file.url }}" target="_blank" class="btn btn-sm btn-primary mt-2">Open / Download Invoice</a>{% endif %}
       </div>
     </div>
   </div>
@@ -36,86 +33,95 @@
   <div class="col-lg-5">
     <div class="card shadow-sm">
       <div class="card-body">
-        <h5>Extracted Fields</h5>
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item"><strong>Source:</strong> {{ invoice.source_name }}</li>
-          <li class="list-group-item"><strong>Status:</strong> {{ invoice.status }}</li>
-          <li class="list-group-item"><strong>Vendor:</strong> {{ invoice.vendor_name|default:'—' }}</li>
-          <li class="list-group-item"><strong>Invoice Number:</strong> {{ invoice.invoice_number|default:'—' }}</li>
-          <li class="list-group-item"><strong>Invoice Date:</strong> {{ invoice.invoice_date|default:'—' }}</li>
-          <li class="list-group-item"><strong>Due Date:</strong> {{ invoice.due_date|default:'—' }}</li>
-          <li class="list-group-item"><strong>Currency:</strong> {{ invoice.currency|default:'—' }}</li>
-          <li class="list-group-item"><strong>Total:</strong> {{ invoice.total_amount|default:'—' }}</li>
-          <li class="list-group-item"><strong>Tax:</strong> {{ invoice.tax_amount|default:'—' }}</li>
-          <li class="list-group-item"><strong>Type:</strong> {{ invoice.invoice_type|default:'—' }}</li>
-        </ul>
+        <h5>Workflow & Approval</h5>
+        <p class="mb-1"><strong>Workflow:</strong> {{ workflow.name|default:'Not assigned' }}</p>
+        <p class="mb-1"><strong>Current Level:</strong> {{ invoice.current_approval_level }}</p>
+        <p class="mb-0"><strong>Current Approver:</strong> {{ current_step_user.username|default:'-' }}</p>
       </div>
     </div>
 
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h5>Editable Fields</h5>
+        <form method="post" class="row g-2">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_fields">
+          {% if not workflow or workflow.show_vendor_name %}<div class="col-12"><label>Vendor</label><input class="form-control" name="vendor_name" value="{{ invoice.vendor_name }}" {% if not is_initiator or invoice.approval_state == 'in_approval' or invoice.approval_state == 'final_approved' %}readonly{% endif %}></div>{% endif %}
+          {% if not workflow or workflow.show_invoice_number %}<div class="col-12"><label>Invoice Number</label><input class="form-control" name="invoice_number" value="{{ invoice.invoice_number }}" {% if not is_initiator or invoice.approval_state == 'in_approval' or invoice.approval_state == 'final_approved' %}readonly{% endif %}></div>{% endif %}
+          {% if not workflow or workflow.show_currency %}<div class="col-6"><label>Currency</label><input class="form-control" name="currency" value="{{ invoice.currency }}" {% if not is_initiator or invoice.approval_state == 'in_approval' or invoice.approval_state == 'final_approved' %}readonly{% endif %}></div>{% endif %}
+          {% if not workflow or workflow.show_invoice_type %}<div class="col-6"><label>Type</label><input class="form-control" name="invoice_type" value="{{ invoice.invoice_type }}" {% if not is_initiator or invoice.approval_state == 'in_approval' or invoice.approval_state == 'final_approved' %}readonly{% endif %}></div>{% endif %}
+          {% if not workflow or workflow.show_total_amount %}<div class="col-6"><label>Total</label><input class="form-control" name="total_amount" value="{{ invoice.total_amount|default:'' }}" {% if not is_initiator or invoice.approval_state == 'in_approval' or invoice.approval_state == 'final_approved' %}readonly{% endif %}></div>{% endif %}
+          {% if not workflow or workflow.show_tax_amount %}<div class="col-6"><label>Tax</label><input class="form-control" name="tax_amount" value="{{ invoice.tax_amount|default:'' }}" {% if not is_initiator or invoice.approval_state == 'in_approval' or invoice.approval_state == 'final_approved' %}readonly{% endif %}></div>{% endif %}
+          {% if is_initiator and invoice.approval_state != 'in_approval' and invoice.approval_state != 'final_approved' %}
+          <div class="col-12"><button class="btn btn-outline-primary btn-sm" type="submit">Save field changes</button></div>
+          {% endif %}
+        </form>
+
+        {% if is_initiator and invoice.approval_state != 'in_approval' and invoice.approval_state != 'final_approved' %}
+        <form method="post" class="mt-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="send_for_approval">
+          <div class="mb-2"><label>Submission remarks (optional)</label><textarea class="form-control" name="remarks"></textarea></div>
+          <button class="btn btn-primary" type="submit">Send for Approval</button>
+        </form>
+        {% endif %}
+
+        {% if can_approve %}
+        <form method="post" class="mt-3">
+          {% csrf_token %}
+          <div class="mb-2"><label>Remarks (mandatory for rejection)</label><textarea class="form-control" name="remarks"></textarea></div>
+          <button class="btn btn-success me-2" name="action" value="approve" type="submit">Approve</button>
+          <button class="btn btn-danger" name="action" value="reject" type="submit">Reject</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if not workflow or workflow.show_table_data %}
     <div class="card shadow-sm mt-3">
       <div class="card-body">
         <h5>Extracted Table Data</h5>
         {% if invoice.extracted_data.line_items %}
           <div class="table-responsive">
             <table class="table table-sm table-striped align-middle">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Item Data</th>
-                </tr>
-              </thead>
+              <thead><tr><th>#</th><th>Item Data</th></tr></thead>
               <tbody>
                 {% for item in invoice.extracted_data.line_items %}
-                  <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>
-                      {% if item.rows %}
-                        <div class="table-responsive">
-                          <table class="table table-bordered table-sm mb-0">
-                            {% for row in item.rows %}
-                              <tr>
-                                {% for cell in row %}
-                                  <td>{{ cell }}</td>
-                                {% endfor %}
-                              </tr>
-                            {% endfor %}
-                          </table>
-                        </div>
-                      {% else %}
-                        <pre class="mb-0">{{ item|pprint }}</pre>
-                      {% endif %}
-                    </td>
-                  </tr>
+                  <tr><td>{{ forloop.counter }}</td><td>
+                    {% if item.rows %}
+                    <table class="table table-bordered table-sm mb-0">{% for row in item.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</table>
+                    {% else %}<pre class="mb-0">{{ item|pprint }}</pre>{% endif %}
+                  </td></tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-        {% else %}
-          <p class="text-muted mb-0">No table data detected.</p>
-        {% endif %}
+        {% else %}<p class="text-muted mb-0">No table data detected.</p>{% endif %}
       </div>
     </div>
+    {% endif %}
 
     <div class="card shadow-sm mt-3">
       <div class="card-body">
-        <h5>Extraction Diagnostics</h5>
-        {% if invoice.extracted_data.warnings %}
-          <div class="alert alert-warning">{{ invoice.extracted_data.warnings|join:', ' }}</div>
+        <h5>Approval History</h5>
+        {% if actions %}
+          <ul class="mb-0">
+            {% for action in actions %}
+              <li><strong>L{{ action.level }} {{ action.action }}</strong> by {{ action.actor.username|default:'system' }} - {{ action.remarks|default:'-' }} ({{ action.created_at }})</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted mb-0">No approval actions yet.</p>
         {% endif %}
-        <p class="mb-1"><strong>Text preview used for extraction:</strong></p>
-        <pre class="bg-light p-2">{{ invoice.extracted_data.text_preview|default:'(empty)' }}</pre>
       </div>
     </div>
   </div>
 </div>
 
 {% if invoice.file and invoice.file.url|lower|slice:'-4:' == '.pdf' %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs" type="module"></script>
 <script type="module">
   import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs';
-
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs';
-
   const url = "{{ invoice.file.url|escapejs }}";
   const canvas = document.getElementById('pdf-canvas');
   const context = canvas.getContext('2d');
@@ -123,31 +129,19 @@
   let pdfDoc = null;
   let pageNum = 1;
   let scale = 1.2;
-
   const renderPage = async () => {
     if (!pdfDoc) return;
     const page = await pdfDoc.getPage(pageNum);
     const viewport = page.getViewport({ scale });
     canvas.height = viewport.height;
     canvas.width = viewport.width;
-
     await page.render({ canvasContext: context, viewport }).promise;
     pageNumLabel.textContent = pageNum;
   };
-
-  const loadingTask = pdfjsLib.getDocument(url);
-  pdfDoc = await loadingTask.promise;
+  pdfDoc = await pdfjsLib.getDocument(url).promise;
   await renderPage();
-
-  document.getElementById('zoom-in').addEventListener('click', async () => {
-    scale = Math.min(scale + 0.2, 3);
-    await renderPage();
-  });
-
-  document.getElementById('zoom-out').addEventListener('click', async () => {
-    scale = Math.max(scale - 0.2, 0.6);
-    await renderPage();
-  });
+  document.getElementById('zoom-in').addEventListener('click', async () => { scale = Math.min(scale + 0.2, 3); await renderPage(); });
+  document.getElementById('zoom-out').addEventListener('click', async () => { scale = Math.max(scale - 0.2, 0.6); await renderPage(); });
 </script>
 {% endif %}
 {% endblock %}

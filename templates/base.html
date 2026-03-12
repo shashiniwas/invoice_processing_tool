@@ -10,9 +10,18 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="{% url 'dashboard' %}">Invoice AI</a>
-        <div class="ms-auto">
+        <div class="ms-auto d-flex align-items-center gap-2">
             {% if request.user.is_authenticated %}
-                <span class="text-white-50 me-3">{{ request.user.username }}</span>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-light btn-sm position-relative" title="Notifications">
+                    🔔
+                    {% if notification_count|default:0 > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{{ notification_count }}</span>
+                    {% endif %}
+                </a>
+                {% if request.user.is_superuser %}
+                    <a href="{% url 'create-workflow' %}" class="btn btn-warning btn-sm">Create Workflow</a>
+                {% endif %}
+                <span class="text-white-50">{{ request.user.username }}</span>
                 <form method="post" action="{% url 'logout' %}" class="d-inline">{% csrf_token %}<button class="btn btn-outline-light btn-sm" type="submit">Logout</button></form>
             {% else %}
                 <a class="btn btn-outline-light btn-sm me-2" href="{% url 'login' %}">Login</a>
