@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -6,6 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import Invoice
+from .services.ai_processor import AIInvoiceProcessor
 
 
 class InvoicePipelineTests(TestCase):
@@ -117,3 +119,52 @@ class WebUITests(TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertContains(detail_response, 'Extracted Fields')
         self.assertContains(detail_response, 'Open / Download Invoice')
+
+    def test_dashboard_shows_switch_buttons_for_single_table_view(self):
+        user = User.objects.create_user(username='switcher', password='SecurePass123')
+        self.client.login(username='switcher', password='SecurePass123')
+
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-target="pending-table"')
+        self.assertContains(response, 'data-target="processed-table"')
+        self.assertContains(response, 'data-target="failed-table"')
+        self.assertContains(response, 'id="processed-table" class="invoice-table-panel d-none"')
+
+
+class AIProcessorTests(TestCase):
+    def test_rule_parser_extracts_common_invoice_fields(self):
+        processor = AIInvoiceProcessor()
+        data = processor._extract_with_rules(
+            "Vendor: Tools Inc\nInvoice Number: TI-700\nTotal Amount: $1,250.30\nVAT: $50.30\nCurrency: USD"
+        )
+
+        self.assertEqual(data['vendor_name'], 'Tools Inc')
+        self.assertEqual(data['invoice_number'], 'TI-700')
+        self.assertEqual(data['currency'], 'USD')
+        self.assertEqual(data['total_amount'], '1250.30')
+
+    @patch('invoices.services.ai_processor.AIInvoiceProcessor._extract_from_digital_pdf_with_pdfplumber')
+    def test_pdf_uses_pdf_extraction_path(self, mock_pdf_extract):
+        mock_pdf_extract.return_value = ('Vendor: PDF Corp\nInvoice Number: PDF-1\nTotal: 100.00', [])
+        processor = AIInvoiceProcessor()
+
+        with patch('pathlib.Path.read_text', return_value=''):
+            result = processor.extract('/tmp/sample.pdf')
+
+        self.assertEqual(result['vendor_name'], 'PDF Corp')
+        self.assertEqual(result['invoice_number'], 'PDF-1')
+
+
+    @patch('invoices.services.ai_processor.AIInvoiceProcessor._extract_from_scanned_pdf_with_docling')
+    @patch('invoices.services.ai_processor.AIInvoiceProcessor._extract_from_digital_pdf_with_pdfplumber')
+    def test_scanned_pdf_uses_docling_when_digital_text_empty(self, mock_digital, mock_docling):
+        mock_digital.return_value = ('', [])
+        mock_docling.return_value = ('Vendor: Scan Corp\nInvoice Number: SC-1\nTotal: 90.00', [])
+        processor = AIInvoiceProcessor()
+
+        with patch('pathlib.Path.read_text', return_value=''):
+            result = processor.extract('/tmp/scanned.pdf')
+
+        self.assertEqual(result['vendor_name'], 'Scan Corp')
+        self.assertEqual(result['invoice_number'], 'SC-1')

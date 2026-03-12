@@ -40,6 +40,17 @@
         {% endif %}
       </div>
     </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h5>Extraction Diagnostics</h5>
+        {% if invoice.extracted_data.warnings %}
+          <div class="alert alert-warning">{{ invoice.extracted_data.warnings|join:', ' }}</div>
+        {% endif %}
+        <p class="mb-1"><strong>Text preview used for extraction:</strong></p>
+        <pre class="bg-light p-2">{{ invoice.extracted_data.text_preview|default:'(empty)' }}</pre>
+      </div>
+    </div>
     <div class="card shadow-sm mt-3">
       <div class="card-body">
         <h5>JSON Data</h5>

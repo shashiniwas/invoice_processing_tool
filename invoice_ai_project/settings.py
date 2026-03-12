@@ -72,6 +72,7 @@ EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.Em
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@invoice-ai.local')
 NOTIFICATION_EMAIL = os.getenv('NOTIFICATION_EMAIL', 'ops@company.local')
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY', '')
+MISTRAL_MODEL = os.getenv('MISTRAL_MODEL', 'mistral-small-latest')
 ERP_PROVIDER = os.getenv('ERP_PROVIDER', 'mock')
 ERP_ENDPOINT = os.getenv('ERP_ENDPOINT', 'https://erp.example.com/api/invoices')

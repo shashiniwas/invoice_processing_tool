@@ -21,12 +21,37 @@
   </div>
 </div>
 
-<h4>Pending Invoices</h4>
-{% include 'partials/invoice_table.html' with invoices=pending_invoices %}
+<div class="d-flex gap-2 mb-3">
+  <button class="btn btn-outline-primary table-switch active" data-target="pending-table">Pending ({{ pending_invoices|length }})</button>
+  <button class="btn btn-outline-success table-switch" data-target="processed-table">Processed ({{ processed_invoices|length }})</button>
+  <button class="btn btn-outline-danger table-switch" data-target="failed-table">Failed ({{ failed_invoices|length }})</button>
+</div>
 
-<h4 class="mt-4">Processed Invoices</h4>
-{% include 'partials/invoice_table.html' with invoices=processed_invoices %}
+<div id="pending-table" class="invoice-table-panel">
+  <h4>Pending Invoices</h4>
+  {% include 'partials/invoice_table.html' with invoices=pending_invoices %}
+</div>
 
-<h4 class="mt-4">Failed Invoices</h4>
-{% include 'partials/invoice_table.html' with invoices=failed_invoices %}
+<div id="processed-table" class="invoice-table-panel d-none">
+  <h4>Processed Invoices</h4>
+  {% include 'partials/invoice_table.html' with invoices=processed_invoices %}
+</div>
+
+<div id="failed-table" class="invoice-table-panel d-none">
+  <h4>Failed Invoices</h4>
+  {% include 'partials/invoice_table.html' with invoices=failed_invoices %}
+</div>
+
+<script>
+  document.querySelectorAll('.table-switch').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = button.dataset.target;
+      document.querySelectorAll('.invoice-table-panel').forEach((panel) => panel.classList.add('d-none'));
+      document.getElementById(target).classList.remove('d-none');
+
+      document.querySelectorAll('.table-switch').forEach((btn) => btn.classList.remove('active'));
+      button.classList.add('active');
+    });
+  });
+</script>
 {% endblock %}
