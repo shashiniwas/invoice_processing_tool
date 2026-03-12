@@ -1,0 +1,34 @@
+<div class="table-responsive">
+<table class="table table-striped table-hover align-middle">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Source</th>
+      <th>Invoice #</th>
+      <th>Vendor</th>
+      <th>Total</th>
+      <th>Processing</th>
+      <th>Approval</th>
+      <th>Created</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for invoice in invoices %}
+      <tr>
+        <td>{{ invoice.id }}</td>
+        <td>{{ invoice.source_name }}</td>
+        <td>{{ invoice.invoice_number|default:'—' }}</td>
+        <td>{{ invoice.vendor_name|default:'—' }}</td>
+        <td>{% if invoice.total_amount %}{{ invoice.total_amount }} {{ invoice.currency }}{% else %}—{% endif %}</td>
+        <td><span class="badge text-bg-secondary">{{ invoice.status }}</span></td>
+        <td><span class="badge text-bg-info">{{ invoice.approval_state }}</span></td>
+        <td>{{ invoice.created_at }}</td>
+        <td><a class="btn btn-sm btn-outline-primary" href="{% url 'invoice-detail-page' invoice.id %}">View</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9" class="text-center text-muted">No invoices</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
