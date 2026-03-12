@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Invoice {{ invoice.id }} | Invoice AI{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Invoice #{{ invoice.id }}</h3>
+  <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">PDF Preview</h5>
+        {% if invoice.file and invoice.file.url|lower|slice:'-4:' == '.pdf' %}
+          <div class="d-flex gap-2 mb-2">
+            <button id="zoom-out" class="btn btn-sm btn-outline-secondary" type="button">Zoom Out</button>
+            <button id="zoom-in" class="btn btn-sm btn-outline-secondary" type="button">Zoom In</button>
+            <span class="ms-auto text-muted small">Page: <span id="pdf-page-number">1</span></span>
+          </div>
+          <div class="border rounded bg-light p-2" style="overflow:auto; max-height: 78vh;">
+            <canvas id="pdf-canvas" style="width:100%; height:auto;"></canvas>
+          </div>
+          <p class="mt-2 mb-0">
+            <a href="{{ invoice.file.url }}" target="_blank" class="btn btn-sm btn-primary">Open / Download Invoice</a>
+          </p>
+        {% elif invoice.file %}
+          <p class="text-muted mb-2">Preview is optimized for PDF files. Use download for this file type.</p>
+          <a href="{{ invoice.file.url }}" target="_blank" class="btn btn-sm btn-primary">Open / Download Invoice</a>
+        {% else %}
+          <p class="text-muted">No file uploaded.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5>Extracted Fields</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item"><strong>Source:</strong> {{ invoice.source_name }}</li>
+          <li class="list-group-item"><strong>Status:</strong> {{ invoice.status }}</li>
+          <li class="list-group-item"><strong>Vendor:</strong> {{ invoice.vendor_name|default:'—' }}</li>
+          <li class="list-group-item"><strong>Invoice Number:</strong> {{ invoice.invoice_number|default:'—' }}</li>
+          <li class="list-group-item"><strong>Invoice Date:</strong> {{ invoice.invoice_date|default:'—' }}</li>
+          <li class="list-group-item"><strong>Due Date:</strong> {{ invoice.due_date|default:'—' }}</li>
+          <li class="list-group-item"><strong>Currency:</strong> {{ invoice.currency|default:'—' }}</li>
+          <li class="list-group-item"><strong>Total:</strong> {{ invoice.total_amount|default:'—' }}</li>
+          <li class="list-group-item"><strong>Tax:</strong> {{ invoice.tax_amount|default:'—' }}</li>
+          <li class="list-group-item"><strong>Type:</strong> {{ invoice.invoice_type|default:'—' }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h5>Extracted Table Data</h5>
+        {% if invoice.extracted_data.line_items %}
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Item Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in invoice.extracted_data.line_items %}
+                  <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                      {% if item.rows %}
+                        <div class="table-responsive">
+                          <table class="table table-bordered table-sm mb-0">
+                            {% for row in item.rows %}
+                              <tr>
+                                {% for cell in row %}
+                                  <td>{{ cell }}</td>
+                                {% endfor %}
+                              </tr>
+                            {% endfor %}
+                          </table>
+                        </div>
+                      {% else %}
+                        <pre class="mb-0">{{ item|pprint }}</pre>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">No table data detected.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h5>Extraction Diagnostics</h5>
+        {% if invoice.extracted_data.warnings %}
+          <div class="alert alert-warning">{{ invoice.extracted_data.warnings|join:', ' }}</div>
+        {% endif %}
+        <p class="mb-1"><strong>Text preview used for extraction:</strong></p>
+        <pre class="bg-light p-2">{{ invoice.extracted_data.text_preview|default:'(empty)' }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if invoice.file and invoice.file.url|lower|slice:'-4:' == '.pdf' %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs" type="module"></script>
+<script type="module">
+  import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs';
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs';
+
+  const url = "{{ invoice.file.url|escapejs }}";
+  const canvas = document.getElementById('pdf-canvas');
+  const context = canvas.getContext('2d');
+  const pageNumLabel = document.getElementById('pdf-page-number');
+  let pdfDoc = null;
+  let pageNum = 1;
+  let scale = 1.2;
+
+  const renderPage = async () => {
+    if (!pdfDoc) return;
+    const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale });
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    pageNumLabel.textContent = pageNum;
+  };
+
+  const loadingTask = pdfjsLib.getDocument(url);
+  pdfDoc = await loadingTask.promise;
+  await renderPage();
+
+  document.getElementById('zoom-in').addEventListener('click', async () => {
+    scale = Math.min(scale + 0.2, 3);
+    await renderPage();
+  });
+
+  document.getElementById('zoom-out').addEventListener('click', async () => {
+    scale = Math.max(scale - 0.2, 0.6);
+    await renderPage();
+  });
+</script>
+{% endif %}
+{% endblock %}
