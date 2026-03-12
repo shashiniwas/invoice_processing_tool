@@ -118,7 +118,6 @@ class WebUITests(TestCase):
         detail_response = self.client.get(reverse('invoice-detail-page', kwargs={'invoice_id': invoice.id}))
         self.assertEqual(detail_response.status_code, 200)
         self.assertContains(detail_response, 'Extracted Fields')
-        self.assertContains(detail_response, 'Open / Download Invoice')
 
     def test_dashboard_shows_switch_buttons_for_single_table_view(self):
         user = User.objects.create_user(username='switcher', password='SecurePass123')
@@ -130,6 +129,31 @@ class WebUITests(TestCase):
         self.assertContains(response, 'data-target="processed-table"')
         self.assertContains(response, 'data-target="failed-table"')
         self.assertContains(response, 'id="processed-table" class="invoice-table-panel d-none"')
+
+
+
+
+    def test_invoice_detail_pdf_preview_controls_and_table_data(self):
+        user = User.objects.create_user(username='pdfuser', password='SecurePass123')
+        self.client.login(username='pdfuser', password='SecurePass123')
+
+        invoice = Invoice.objects.create(
+            source_name='pdf_upload',
+            uploaded_by=user,
+            file='invoices/sample.pdf',
+            extracted_data={
+                'line_items': [
+                    {'rows': [['Item', 'Qty', 'Price'], ['Paper', '10', '20.00']]}
+                ]
+            },
+        )
+
+        detail_response = self.client.get(reverse('invoice-detail-page', kwargs={'invoice_id': invoice.id}))
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, 'Zoom In')
+        self.assertContains(detail_response, 'Zoom Out')
+        self.assertContains(detail_response, 'Extracted Table Data')
+        self.assertContains(detail_response, 'Paper')
 
 
 class AIProcessorTests(TestCase):

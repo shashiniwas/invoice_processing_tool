@@ -6,7 +6,7 @@ A Django service that ingests invoices of different layouts, extracts structured
 - Browser UI for registration, login, and user dashboard.
 - Dashboard invoice uploader (this is where invoices are uploaded from UI).
 - Invoice list switcher buttons to show only one table at a time (Pending / Processed / Failed).
-- Invoice detail page with extracted fields + invoice file preview/download + extraction diagnostics.
+- Invoice detail page with PDF.js preview (left), extracted fields (right), zoom in/out controls, extracted table rendering, and diagnostics.
 - Upload invoice files through API.
 - Dynamic extraction pipeline for many invoice formats.
 - Digital PDF text/table extraction via pdfplumber.
